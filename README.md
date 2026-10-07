@@ -1,628 +1,98 @@
-<div align="center">
-  <img class="logo" src="https://raw.githubusercontent.com/umputun/reproxy/master/site/logo-bg.svg" width="355px" height="142px" alt="Reproxy | Simple Reverse Proxy"/>
-</div>
-
-Reproxy is a simple edge HTTP(s) server / reverse proxy supporting various providers (docker, static, file, consul catalog). One or more providers supply information about the requested server, requested URL, destination URL, and health check URL. It is distributed as a single binary or as a docker container.
-
-- Automatic SSL termination with <a href="https://letsencrypt.org/" rel="nofollow noopener noreferrer" target="_blank">Let's Encrypt</a>
-- Support of user-provided SSL certificates
-- Simple but flexible proxy rules
-- Static, command-line proxy rules provider
-- Dynamic, file-based proxy rules provider
-- Docker provider with an automatic discovery
-- Consul Catalog provider with discovery by service tags
-- Support for multiple (virtual) hosts
-- Optional traffic compression
-- Optional IP-based access control
-- Per-route basic authentication
-- User-defined size limits and timeouts
-- Single binary distribution
-- Docker container distribution
-- Built-in static assets server with optional "SPA friendly" mode
-- Support for redirect rules 
-- Optional limiter for the overall activity as well as for user's activity
-- Live health check and fail-over/load-balancing  
-- Management server with routes info and prometheus metrics
-- Plugins support via RPC to implement custom functionality
-- Optional logging with both Apache Log Format, and simplified stdout reports.
----
-<div align="center">
-
-[![build](https://github.com/umputun/reproxy/actions/workflows/ci.yml/badge.svg)](https://github.com/umputun/reproxy/actions/workflows/ci.yml)&nbsp;[![Coverage Status](https://coveralls.io/repos/github/umputun/reproxy/badge.svg?branch=master)](https://coveralls.io/github/umputun/reproxy?branch=master)&nbsp;[![Go Report Card](https://goreportcard.com/badge/github.com/umputun/reproxy)](https://goreportcard.com/report/github.com/umputun/reproxy)&nbsp;[![Docker Hub](https://img.shields.io/docker/automated/jrottenberg/ffmpeg.svg)](https://hub.docker.com/r/umputun/reproxy)
-
-</div>
-
-Server (host) can be set as FQDN, i.e. `s.example.com`, `*` (catch all) or a regex. Exact match takes priority, so if there are two rules with servers `example.com` and `example\.(com|org)`, request to `example.com/some/url` will match the former. Requested url can be regex, for example `^/api/(.*)` and destination url may have regex matched groups in, i.e. `http://d.example.com:8080/$1`. For the example above `http://s.example.com/api/something?foo=bar` will be proxied to `http://d.example.com:8080/something?foo=bar`.
-
-For convenience, requests with the trailing `/` and without regex groups expanded to `/(.*)`, and destinations in those cases expanded to `/$1`. I.e. `/api/` -> `http://127.0.0.1/service` will be translated to `^/api/(.*)` -> `http://127.0.0.1/service/$1`.
-
-The host substitution is supported in the destination URL. For example, `/files/${host}` will be replaced with the matched host name. `$host` (without braces) can also be used.
-
-Both HTTP and HTTPS supported. For HTTPS, static certificate can be used as well as automated ACME (Let's Encrypt) certificates. Optional assets server can be used to serve static files. Starting reproxy requires at least one provider defined. The rest of parameters are strictly optional and have sane default.
-
-Examples:
-
- - with a static provider: `reproxy --static.enabled --static.rule="*,example.com/api/(.*),https://api.example.com/$1"`
- - with an automatic docker discovery: `reproxy --docker.enabled --docker.auto`
- - as a docker container: `docker up -p 80:8080 umputun/reproxy --docker.enabled --docker.auto`  
- - with automatic SSL: `docker up -p 80:8080 -p 443:8443 umputun/reproxy --docker.enabled --docker.auto --ssl.type=auto --ssl.fqdn=example.com`  
-
-## Install
-
-Reproxy distributed as a small self-contained binary as well as a docker image. Both binary and image support multiple architectures and multiple operating systems, including linux_x86_64, linux_arm64, linux_arm, macos_x86_64, macos_arm64, windows_x86_64 and windows_arm. We also provide both arm64 and x86 deb and rpm packages.
-
-- for a binary distribution download the proper file in the [release section](https://github.com/umputun/reproxy/releases)
-- for Homebrew users: `brew install umputun/apps/reproxy`
-- docker container available on [Docker Hub](https://hub.docker.com/r/umputun/reproxy) as well as on [Github Container Registry](https://github.com/users/umputun/packages/container/reproxy/versions). I.e. `docker pull umputun/reproxy` or `docker pull ghcr.io/umputun/reproxy`.
-
-Latest stable version has `:vX.Y.Z` docker tag (with `:latest` alias) and the current master has `:master` tag.
-
-## Providers
-
-Proxy rules supplied by various providers. Currently included - `file`, `docker`, `static` and `consul-catalog`. Each provider may define multiple routing rules for both proxied request and static (assets). User can sets multiple providers at the same time.
-
-_See examples of various providers in [examples](https://github.com/umputun/reproxy/tree/master/examples)_
-
-### Static provider
-
-This is the simplest provider defining all mapping rules directly in the command line (or environment). Multiple rules supported. Each rule is 3 to 7 comma-separated elements `server,sourceurl,destination[,ping-url[,forward-health-checks[,timeout[,throttle]]]]`. For example:
-
-- `*,^/api/(.*),https://api.example.com/$1` - proxy all request to any host/server with `/api` prefix to `https://api.example.com`
-- `example.com,/foo/bar,https://api.example.com/zzz,https://api.example.com/ping` - proxy all requests to `example.com` and with `/foo/bar` url to `https://api.example.com/zzz` and it sees `https://api.example.com/ping` for the health check.
-- `example.com,/foo/bar,https://api.example.com/zzz,https://api.example.com/ping,true` - same as above but also forwards `/ping` and `/health` requests to the backend.
-- `example.com,^/upload/(.*),https://api.example.com/$1,,,5m` - per-route request timeout of 5 minutes (4th and 5th fields left empty to skip ping-url and forward-health-checks).
-- `example.com,^/login,https://api.example.com/login,,,,2` - per-route throttle of 2 req/sec per user (positional fields before are left empty).
-
-The 4th element defines an optional ping url used for health reporting. The 5th element optionally enables forwarding health check requests to the backend (`true`, `yes`, `1`). See [Health check](#ping-and-health-checks) section for more details. The 6th element is an optional per-route request timeout (Go duration, e.g. `5m`, `30s`); `0` or empty inherits the global `--timeout.write` setting. The 7th element is an optional per-route req/sec limit per user; `0` or empty inherits `--throttle.user`. Empty positional fields are allowed (e.g. `,,` for the unused middle fields).
-
-### File provider
-
-This provider uses yaml file with routing rules.
-
-`reproxy --file.enabled --file.name=config.yml`
-
-Example of `config.yml`:
-
-```yaml
-default: # the same as * (catch-all) server
-  - { route: "^/api/svc1/(.*)", dest: "http://127.0.0.1:8080/blah1/$1" }
-  - {
-      route: "/api/svc3/xyz",
-      dest: "http://127.0.0.3:8080/blah3/xyz",
-      ping: "http://127.0.0.3:8080/ping",
-      remote: "192.168.1.0/24, 127.0.0.1", # optional, restrict access to the route
-      forward-health-checks: true # optional, forward /ping and /health to backend
-    }
-  - {
-      route: "^/admin/(.*)",
-      dest: "http://127.0.0.4:8080/$1",
-      auth: "admin:$2y$05$..." # optional, per-route basic auth (htpasswd bcrypt format)
-    }
-  - {
-      route: "^/upload/(.*)",
-      dest: "http://127.0.0.5:8080/$1",
-      timeout: 5m # optional, per-route request timeout (Go duration). 0 or omitted inherits --timeout.write
-    }
-  - {
-      route: "^/login",
-      dest: "http://127.0.0.6:8080/login",
-      throttle: 2 # optional, per-route req/sec per user. 0 or omitted inherits --throttle.user
-    }
-srv.example.com:
-  - { route: "^/api/svc2/(.*)", dest: "http://127.0.0.2:8080/blah2/$1/abc" }
-  - { route: "/web/", dest: "/var/www", "assets": true }
-"*.files.example.com":
-  - { route: "^/files/(.*)", dest: "http://123.123.200.200:8080/$host/$1" }
-```
-
-This is a dynamic provider and file change will be applied automatically.
-
-**Multiple static sites on different domains** can be served by using server names as keys with `assets: true`:
-
-```yaml
-site-en.example.com:
-  - { route: "/", dest: "/var/www/en", "assets": true }
-site-ru.example.com:
-  - { route: "/", dest: "/var/www/ru", "assets": true }
-```
-
-**Important:** the `route` field for asset rules must be a path prefix (e.g., `/`, `/web/`), not a regex. Regex patterns like `^/(.*)` won't work with `assets: true` because static asset matching uses path prefix comparison, not regex.
-
-### Docker provider
-
-Docker provider supports a fully automatic discovery (with `--docker.auto`) with no extra configuration needed. By default, it redirects all requests like `http://<url>/<container name>/(.*)` to the internal IP of the given container and the exposed port. Only active (running) containers will be detected.
-
-This default can be changed with labels:
-
-- `reproxy.server` - server (hostname) to match. Also can be a list of comma-separated servers.
-- `reproxy.route` - source route (location)
-- `reproxy.dest` - destination path. Note: this is not full url, but just the path which will be appended to container's ip:port
-- `reproxy.port` - destination port for the discovered container
-- `reproxy.ping` - ping path for the destination container.
-- `reproxy.remote` - restrict access to the route with a list of comma-separated subnets or ips
-- `reproxy.auth` - require basic auth for the route with comma-separated `user:bcrypt_hash` pairs (generated by `htpasswd -nbB`)
-- `reproxy.assets` - set assets mapping as `web-root:location`, for example `reproxy.assets=/web:/var/www`
-- `reproxy.keep-host` - keep host header as is (`yes`, `true`, `1`) or replace with destination host (`no`, `false`, `0`)
-- `reproxy.forward-health-checks` - forward `/ping` and `/health` requests to the backend instead of reproxy handling them (`yes`, `true`, `1`). Useful when the backend has its own health check endpoints with application-specific responses.
-- `reproxy.timeout` - per-route request timeout as a Go duration (e.g. `5m`, `30s`). `0` or unset inherits the global `--timeout.write`. Invalid values are ignored with a warning.
-- `reproxy.throttle` - per-route req/sec limit per user. `0` or unset inherits `--throttle.user`. Invalid or negative values are ignored with a warning.
-- `reproxy.enabled` - enable (`yes`, `true`, `1`) or disable (`no`, `false`, `0`) container from reproxy destinations.
-
-Pls note: without `--docker.auto` the destination container has to have at least one of `reproxy.*` labels to be considered as a potential destination.
-
-With `--docker.auto`, all containers with exposed port will be considered as routing destinations. There are 3 ways to restrict it:
-
-- Exclude some containers explicitly with `--docker.exclude`, i.e. `--docker.exclude=c1 --docker.exclude=c2 ...`
-- Allow only a particular docker network with `--docker.network`
-- Set the label `reproxy.enabled=false` or `reproxy.enabled=no` or `reproxy.enabled=0`
-
-If no `reproxy.route` defined, the default route is `^/<container_name>/(.*)`. In case if all proxied source should have the same prefix pattern, for example `/api/(.*)` user can define the common prefix (in this case `/api`) for all container-based routes. This can be done with `--docker.prefix` parameter.
-
-Docker provider also allows to define multiple set of `reproxy.N.something` labels to match multiple distinct routes on the same container. This is useful as in some cases a single container may expose multiple endpoints, for example, public API and some admin API. All the labels above can be used with "N-index", i.e. `reproxy.1.server`, `reproxy.1.port` and so on. N should be in 0 to 9 range.
-
-This is a dynamic provider and any change in container's status will be applied automatically.
-
-### Consul Catalog provider
-
-Use: `reproxy --consul-catalog.enabled`
-
-Consul Catalog provider calls Consul API periodically (every second by default) to obtain services, which has any tag with `reproxy.` prefix. User can redefine check interval with `--consul-catalog.interval` command line flag as well as consul address with `--consul-catalog.address` command line option. The default address is `http://127.0.0.1:8500`. 
-
-For example:
-```
-reproxy --consul-catalog.enabled --consul-catalog.address=http://192.168.1.100:8500 --consul-catalog.interval=10s  
-```
-
-By default, provider sets values for every service:
-- enabled `false`
-- server `*`
-- route `^/(.*)`
-- dest `http://<SERVICE_ADDRESS_FROM_CONSUL>/$1`
-- ping `http://<SERVICE_ADDRESS_FROM_CONSUL>/ping`
-
-This default can be changed with tags:
-
-- `reproxy.server` - server (hostname) to match. Also, can be a list of comma-separated servers.
-- `reproxy.route` - source route (location)
-- `reproxy.dest` - destination path. Note: this is not full url, but just the path which will be appended to service's ip:port
-- `reproxy.port` - destination port for the discovered service
-- `reproxy.remote` - restrict access to the route with a list of comma-separated subnets or ips
-- `reproxy.auth` - require basic auth for the route with comma-separated `user:bcrypt_hash` pairs (generated by `htpasswd -nbB`)
-- `reproxy.ping` - ping path for the destination service.
-- `reproxy.forward-health-checks` - forward `/ping` and `/health` requests to the backend (`true`, `yes`, `1`).
-- `reproxy.timeout` - per-route request timeout as a Go duration (e.g. `5m`, `30s`). `0` or unset inherits the global `--timeout.write`. Invalid values are ignored with a warning.
-- `reproxy.throttle` - per-route req/sec limit per user. `0` or unset inherits `--throttle.user`. Invalid or negative values are ignored with a warning.
-- `reproxy.enabled` - enable (`yes`, `true`, `1`) or disable (`any different value`) service from reproxy destinations.
-
-### Compose-specific details
-
-In case if rules set as a part of docker compose environment, destination with the regex group will conflict with compose syntax. I.e. attempt to use `https://api.example.com/$1` in compose environment will fail due to a syntax error. The standard solution here is to "escape" `$` sign by replacing it with `$$`, i.e. `https://api.example.com/$$1`. This substitution supported by docker compose and has nothing to do with reproxy itself. Another way is to use `@` instead of `$` which is supported on reproxy level, i.e. `https://api.example.com/@1`_
-
-
-## SSL support
-
-SSL mode (by default none) can be set to `auto` (ACME/LE certificates), `static` (existing certificate) or `none`. If `auto` turned on SSL certificate will be issued automatically for all discovered server names. User can override it by setting `--ssl.fqdn` value(s). In `auto` and `static` SSL mode, Reproxy will automatically add the `X-Forwarded-Proto` and `X-Forwarded-Port` headers. These headers are useful for services behind the proxy to know the original protocol (http or https) and port number used by the client.
-
-When using ACME with discovery providers (docker, file, consul), SSL certificates are automatically obtained for newly discovered servers without requiring a reproxy restart.
-
-### ACME Challenges
-
-Reproxy supports two types of ACME challenges for SSL certificate validation:
-
-1. **HTTP-01 Challenge** (default): Validates domain ownership by serving a token at a specific HTTP URL. Requires port 80 to be publicly accessible.
-
-2. **DNS-01 Challenge**: Validates domain ownership by creating DNS TXT records. This method:
-   - Does not require port 80 to be accessible
-   - Works with wildcard certificates
-   - Requires a supported DNS provider configuration
-
-#### Challenge Selection
-
-Reproxy automatically determines which challenge method to use based on your configuration:
-
-- **HTTP-01** (default): Used when no DNS provider is configured
-- **DNS-01**: Used when a DNS provider is configured
-
-You don't need to explicitly select a challenge type - just configure a DNS provider if you want to use DNS-01 challenges.
-
-#### Currently Supported DNS Providers
-
-Reproxy currently includes support for the following DNS providers:
-
-- **Cloudflare**: `--ssl.dns.type=cloudflare --ssl.dns.cloudflare.api-token=TOKEN`
-- **Route53 (AWS)**: `--ssl.dns.type=route53 --ssl.dns.route53.region=REGION --ssl.dns.route53.hosted-zone-id=ID`
-- **Gandi**: `--ssl.dns.type=gandi --ssl.dns.gandi.bearer-token=TOKEN`
-- **DigitalOcean**: `--ssl.dns.type=digitalocean --ssl.dns.digitalocean.api-token=TOKEN`
-- **Hetzner**: `--ssl.dns.type=hetzner --ssl.dns.hetzner.api-token=TOKEN`
-- **Linode**: `--ssl.dns.type=linode --ssl.dns.linode.api-token=TOKEN`
-- **GoDaddy**: `--ssl.dns.type=godaddy --ssl.dns.godaddy.api-token=TOKEN`
-- **Namecheap**: `--ssl.dns.type=namecheap --ssl.dns.namecheap.api-key=KEY --ssl.dns.namecheap.user=USER`
-- **Scaleway**: `--ssl.dns.type=scaleway --ssl.dns.scaleway.secret-key=KEY --ssl.dns.scaleway.organization-id=ID`
-- **Porkbun**: `--ssl.dns.type=porkbun --ssl.dns.porkbun.api-key=KEY --ssl.dns.porkbun.api-secret-key=SECRET`
-- **DNSimple**: `--ssl.dns.type=dnsimple --ssl.dns.dnsimple.api-access-token=TOKEN --ssl.dns.dnsimple.account-id=ID`
-- **DuckDNS**: `--ssl.dns.type=duckdns --ssl.dns.duckdns.api-token=TOKEN`
-
-Example with Cloudflare as DNS provider:
-```
-export CLOUDFLARE_API_TOKEN=your_api_token
-reproxy --ssl.type=auto --ssl.acme-email=admin@example.com --ssl.fqdn=example.com
-```
-
-The DNS-01 challenge is especially useful when:
-- Your server doesn't have port 80 exposed publicly
-- You need wildcard certificates (e.g., *.example.com)
-- You're behind restrictive firewalls
-
-## Headers 
-
-Reproxy allows to sanitize (remove) incoming headers by passing `--drop-header` parameter (can be repeated). This parameter can be useful to make sure some of the headers, set internally by the services, can't be set/faked by the end user. For example if some of the services, responsible for the auth, sets `X-Auth-User` and `X-Auth-Token` it is likely makes sense to drop those headers from the incoming requests by passing `--drop-header=X-Auth-User --drop-header=X-Auth-Token` parameter or via environment `DROP_HEADERS=X-Auth-User,X-Auth-Token`
-
-The opposite function, setting outgoing header(s) supported as well. It can be useful in many cases, for example enforcing some custom CORS rules, security related headers and so on. This can be done with `--header` parameter (can be repeated) or env `HEADER`. For example, this is how it can be done with the docker compose:
-
-```yaml
-  environment:
-      - HEADER=
-          X-Frame-Options:SAMEORIGIN,
-          X-XSS-Protection:1; mode=block;,
-          Content-Security-Policy:default-src 'self'; style-src 'self' 'unsafe-inline';
-```
-
-## Logging
-
-By default no request log generated. This can be turned on by setting `--logger.enabled`. The log (auto-rotated) has [Apache Combined Log Format](http://httpd.apache.org/docs/2.2/logs.html#combined)
-
-User can also turn stdout log on with `--logger.stdout`. It won't affect the file logging above but will output some minimal info about processed requests, something like this:
-
-```
-2021/04/16 01:17:25.601 [INFO]  GET - /echo/image.png - xxx.xxx.xxx.xxx - 200 (155400) - 371.661251ms
-2021/04/16 01:18:18.959 [INFO]  GET - /api/v1/params - xxx.xxx.xxx.xxx - 200 (74) - 1.217669m
-```
-
-## Assets Server
-
-Users may turn the assets server on (off by default) to serve static files. As long as `--assets.location` set it treats every non-proxied request under `assets.root` as a request for static files. The assets server can be used without any proxy providers; in this mode, reproxy acts as a simple web server for the static content. Assets server also supports "spa mode" with `--assets.spa` where all not-found request forwarded to `index.html`.
-
-In addition to the common assets server, multiple custom assets servers are supported. Each provider has a different way to define such a static rule, and some providers may not support it at all. For example, multiple asset servers make sense in static (command line provider), file provider, and even useful with docker providers, however it makes very little sense with consul catalog provider.
-
-1. static provider - if source element prefixed by `assets:` or `spa:` it will be treated as file-server. For example `*,assets:/web,/var/www,` will serve all `/web/*` request with a file server on top of `/var/www` directory.
-2. file provider - setting optional fields `assets: true` or `spa: true`. Note: the `route` field must be a path prefix (e.g., `/`, `/web/`), not a regex pattern.
-3. docker provider - `reproxy.assets=web-root:location`, i.e. `reproxy.assets=/web:/var/www`. Switching to spa mode done by setting `reproxy.spa` to `yes` or `true`
-
-### Caching
-
-Assets server supports caching control with the `--assets.cache=<duration>` parameter. `0s` duration (default) turns caching control off. A duration is a sequence of decimal numbers, each with optional fraction and a unit suffix, such as "300ms", "1.5h" or "2h45m". Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" and "d".
-
-There are two ways to set cache duration:
-
-1. A single value for all static assets. This is as simple as `--assets.cache=48h`.
-2. Custom duration for different mime types. It should include two parts - the default value and the pairs of mime:duration. In command line this looks like multiple `--assets.cache` options, i.e. `--assets.cache=48h --assets.cache=text/html:24h --assets.cache=image/png:2h`. Environment values should be comma-separated, i.e. `ASSETS_CACHE=48h,text/html:24h,image/png:2h`
-
-Custom 404 (not found) page can be set with `--assets.not-found=<path>` parameter. The path should be relative to the assets root.
-
-## Using reproxy as a base image
-
-Serving purely static content is one of the popular use cases. Usually this used for the separate frontend container providing UI only. With the assets server such a container is almost trivial to make. This is an example from the container serving [reproxy.io](http://reproxy.io)
-
-```docker
-FROM node:22-alpine as build
-
-WORKDIR /build
-COPY site/ /build
-COPY README.md /build/src/index.md
-
-RUN yarn --frozen-lockfile
-RUN yarn build
-RUN	ls -la /build/public
-
-FROM ghcr.io/umputun/reproxy
-COPY --from=build /build/public /srv/site
-EXPOSE 8080
-USER app
-ENTRYPOINT ["/srv/reproxy", "--assets.location=/srv/site"]
-```
-All it needs is to copy stastic assets to some location and passing this location as `"--assets.location` to reproxy entrypoint.
-
-## SPA-friendly mode
-
-Some SPA applications counts on proxy to handle 404 on static asset in a special way, by redirecting it to "/index.html". This is similar to nginx's `try_files $uri $uri/ …` directive and, apparently, this functionality somewhat important for the modern web apps.
-
-This mode is off by default and can be turned on by setting `--assets.spa` or `ASSETS_SPA=true` env.
-
-## Redirects 
-
-By default reproxy treats destination as a proxy location, i.e. it invokes http call internally and returns response back to the client. However by prefixing destination url with `@code` this behaviour can be changed to a permanent (status code 301) or temporary (status code 302) redirects. I.e. destination set to `@301 https://example.com/something` will cause permanent http redirect to `Location: https://example.com/something`
-
-supported codes:
-
-- `@301`, `@perm` - permanent redirect
-- `@302`, `@temp`, `@tmp` - temporary redirect
-
-## More options
-
-- `--gzip`   enables gzip compression for responses.
-- `--max=N`  allows to set the maximum size of request (default 64k). Setting it to `0` disables the size check.
-- `--timeout.*` various timeouts for both server and proxy transport. See `timeout` section in [All Application Options](#all-application-options). A zero or negative value means there will be no timeout.
-- `--insecure` disables SSL verification on the destination host. This is useful for the self-signed certificates.
-
-## Default ports
-
-In order to eliminate the need to pass custom params/environment, the default `--listen` is dynamic and trying to be reasonable and helpful for the typical cases:
-
-- If anything set by users to `--listen` all the logic below ignored and host:port passed in and used directly.
-- If nothing set by users to `--listen` and reproxy runs outside the docker container, the default is `127.0.0.1:80` for http mode (`ssl.type=none`) and `127.0.0.1:443` for ssl mode (`ssl.type=auto` or `ssl.type=static`).
--  If nothing set by users to `--listen` and reproxy runs inside the docker, the default is `0.0.0.0:8080` for http mode, and `0.0.0.0:8443` for ssl mode.
-
-Another default set in the similar dynamic way is `--ssl.http-port`. For run inside of the docker container it set to `8080` and without to `80`. 
-
-## Ping, health checks and fail-over
-
-reproxy provides two endpoints for this purpose:
-
-- `/ping` responds with `pong` and indicates what reproxy up and running
-- `/health` returns `200 OK` status if all destination servers responded to their ping request with `200` or `417 Expectation Failed` if any of servers responded with non-200 code. It also returns json body with details about passed/failed services.
-
-In addition to the endpoints above, reproxy supports optional live health checks. In this case (if enabled), each destination checked for ping response periodically and excluded failed destination routes. It is possible to return multiple identical destinations from the same or various providers, and the only passed picked. If numerous matches were discovered and passed - the final one picked according to `lb-type` strategy (by default random selection).
-
-To turn live health check on, user should set `--health-check.enabled` (or env `HEALTH_CHECK_ENABLED=true`). To customize checking interval `--health-check.interval=` can be used.
-
-## Management API
-
-Optional, can be turned on with `--mgmt.enabled`. Exposes 2 endpoints on `mgmt.listen` (address:port):
-
-- `GET /routes` - list of all discovered routes
-- `GET /metrics` - returns prometheus metrics (`http_requests_total`, `response_status` and `http_response_time_seconds`)
-
-By default, `http_response_time_seconds` uses raw request paths as labels, which can cause high cardinality with dynamic URLs (e.g., `/api/users/123`, `/api/users/456`). Use `--mgmt.low-cardinality` to switch to route patterns (e.g., `^/api/users/(.*)`) instead, significantly reducing metrics cardinality.
-
-_see also [examples/metrics](https://github.com/umputun/reproxy/tree/master/examples/metrics)_
-
-## Errors reporting
-
-Reproxy returns 502 (Bad Gateway) error in case if request doesn't match to any provided routes and assets. In case if some unexpected, internal error happened it returns 500. By default reproxy renders the simplest text version of the error - "Server error". Setting `--error.enabled` turns on the default html error message and with `--error.template` user may set any custom html template file for the error rendering. The template has two vars: `{{.ErrCode}}` and `{{.ErrMessage}}`. For example this template `oh my! {{.ErrCode}} - {{.ErrMessage}}` will be rendered to `oh my! 502 - Bad Gateway`
-
-## Throttling 
-
-Reproxy allows to define system level max req/sec value for the overall system activity as well as per user. 0 values (default) treated as unlimited.
-
-User activity limited for both matched and unmatched routes. All unmatched routes considered as a "single destination group" and get a common limiter which is `rate*3`. It means if 10 (req/sec) defined with `--throttle.user=10` the end user will be able to perform up to 30 request pers second for either static assets or unmatched routes. For matched routes this limiter maintained per destination (route), i.e. request proxied to s1.example.com/api will allow 10 r/s and the request proxied to s2.example.com will allow another 10 r/s.
-
-### Per-route timeout and throttle
-
-Individual routes can override the global `--timeout.write` and `--throttle.user` settings via provider-specific `timeout` and `throttle` fields. This is useful for long-running endpoints (e.g. uploads, report generation) that need a deadline higher than the global write timeout, and for tightening rate limits on sensitive routes (e.g. login) without raising the global ceiling for everything else.
-
-Precedence is "zero inherits global, positive overrides": a route with `timeout: 0` (or no `timeout` field) keeps the global `--timeout.write`; a route with `timeout: 5m` overrides it for matched requests only. The same rule applies to `throttle`.
-
-The per-route timeout overrides the connection's read and write deadlines for matched requests, so it can extend past the global `--timeout.write` (default 30s). Routes without a per-route timeout still respect the global setting.
-
-**Limitation — transport-level response-header timeout:** the per-route `timeout` does NOT override `--timeout.resp-header` (default 5s). That timeout is set on the shared `http.Transport` and applies before the upstream begins sending response headers. If an upstream takes longer than `--timeout.resp-header` to start its response (e.g. a slow report endpoint), the request fails at that boundary regardless of the per-route `timeout`. To support such routes, raise `--timeout.resp-header` globally to the maximum needed by any slow-response route. Per-route override of transport-level timeouts is intentionally out of scope.
-
-Provider syntax:
-- **File provider** (YAML): `timeout: 5m`, `throttle: 2`
-- **Static provider** (CSV): 6th and 7th positional fields, e.g. `*,^/upload/(.*),http://up:8080/$1,,,5m,2`
-- **Docker provider**: `reproxy.timeout=5m`, `reproxy.throttle=2` (or `reproxy.<n>.timeout` / `reproxy.<n>.throttle` for multi-route containers)
-- **Consul Catalog provider**: `reproxy.timeout=5m`, `reproxy.throttle=2`
-
-## Upstream connection limits
-
-Reproxy allows configuring upstream connection pool settings to control how many connections are maintained to backend servers:
-
-- `--upstream.max-idle-conns` - Maximum number of idle connections across all upstream hosts. Default: 100.
-- `--upstream.max-conns` - Maximum number of connections per upstream host (0 = unlimited). Default: 0.
-
-Setting `--upstream.max-conns` limits concurrent connections to each backend, which is useful when upstream servers have limited capacity or to prevent connection exhaustion.
-
-## Basic auth
-
-Reproxy supports basic auth in two modes: global (all routes) and per-route.
-
-### Global basic auth
-
-Global basic auth protects all routes. This is useful for protecting endpoints during development and testing. To enable, set the htpasswd file with `--basic-htpasswd=<file location>` or env `BASIC_HTPASSWD=<file location>`.
-
-Reproxy expects htpasswd file to be in the following format:
-
-```
-username1:bcrypt(password1)
-username2:bcrypt(password2)
-...
-```
-this can be generated with `htpasswd -nbB` command, i.e. `htpasswd -nbB test passwd`
-
-### Per-route basic auth
-
-Per-route auth allows different credentials for different routes. When a route has per-route auth configured, global auth is bypassed for that route. Per-route auth is configured via provider-specific settings:
-
-- **File provider**: `auth` field in YAML, e.g., `auth: "user1:$2y$..., user2:$2y$..."`
-- **Docker provider**: `reproxy.auth` label
-- **Consul Catalog provider**: `reproxy.auth` tag
-- **Static provider**: not supported (use file provider for per-route auth)
-
-The format is a comma-separated list of `user:bcrypt_hash` pairs (same htpasswd format). Multiple users can be specified for the same route.
-
-Example with docker-compose:
-```yaml
-services:
-  admin-api:
-    labels:
-      - "reproxy.route=^/admin/(.*)"
-      - "reproxy.dest=/$1"
-      - "reproxy.auth=admin:$$2y$$05$$hashedpassword"
-```
-
-Note: In docker-compose, `$` must be escaped as `$$`.
-
-## IP-based access control
-
-Reproxy allows restricting access to the routes with a list of comma-separated subnets or ips. This is useful for the development and testing, before allowing unrestricted access to them. It also can be used to restrict access to the internal services. By default, all the routes are open for all the clients.
-
-To restrict access to the routes, user should set appropriate keys for the routes, i.e. `reproxy.remote` for docker and consul, and `remote` for file provider. The value should be a list of comma-separated subnets or ips or subnets. For example `127.0.0.1, 192.168.1.0/24`. For more details see [docker provider](#docker-provider) and [consul catalog provider](#consul-catalog-provider) sections.
-
-By default, reproxy will check the remote address from the client's request. However, in some cases, it won't work as expected, for example behind of other proxy, or with docker bridge network. This can be altered with `--remote-lookup-headers` parameter allowing check the value of the header `X-Real-IP` or `X-Forwarded-For` (in this order) and use it for the check. If the header is not set, the check will be performed against the remote address of the client. These headers are supplied by the client and are trivially spoofable, so this parameter must only be enabled when reproxy runs behind a trusted fronting proxy that always sets and overwrites these headers.
-
-Checking headers should be used with caution, as it is possible to fake them. When `--remote-lookup-headers` is enabled, the IP allowlist relies entirely on this trust assumption: a client sending `X-Real-IP` or `X-Forwarded-For` with an allowed address can otherwise bypass the restriction. Enable this option only if reproxy is behind a trusted proxy that controls these headers and you can guarantee they are not faked.
-
-
-## Plugins support
-
-The core functionality of reproxy can be extended with external plugins. Each plugin is an independent process/container implementing [rpc server](https://golang.org/pkg/net/rpc/). Plugins are registered with reproxy conductor and added to the chain of the middlewares. Each plugin receives request with the original url, headers and all matching route info and responds with the headers and the status code. Any status code >= 400 treated as an error response and terminates flow immediately with the proxy error. There are two types of headers plugins can set:
-
-- `HeadersIn` - incoming headers. Those will be sent to the proxied url
-- `HeadersOut` - outgoing headers. Will be sent back to the client 
-
-By default headers set by a plugin will be mixed with the original headers. In case if plugin need to control all the headers, for example drop some of them, `OverrideHeaders*` field can be set by a plugin indicating to the core reproxy process the need to overwrite all the headers instead of mixing them in.
-
-- `OverrideHeadersIn` - indicates plugin responsible for all incoming headers.
-- `OverrideHeadersOut` - indicates plugin responsible for all outgoing headers 
-
-To simplify the development process all the building blocks provided. It includes `lib.Plugin` handling registration, listening and dispatching calls as well as `lib.Request` and `lib.Response` defining input and output. Plugin's authors should implement concrete handlers satisfying `func(req lib.Request, res *lib.HandlerResponse) (err error)` signature. Each plugin may contain multiple handlers like this.
-
-
-_See [examples/plugin](https://github.com/umputun/reproxy/tree/master/examples/plugin) for more info_
-
-## Container security
-
-By default, the reproxy container runs under the root user to simplify the initial setup and access the docker's socket. This is needed to allow the docker provider discovery of the running containers. However, if such a discovery is not required or the docker provider not in use, it is recommended to change the user to some less-privileged one. It can be done on the docker-compose level and on docker level with `user` option, see the section below for details.
-
-Sometimes, even with inside-the-docker routing, it makes sense to disable the docker provider and setup rules with either static or file provider. All the containers running within a compose sharing the same network and accessible via local DNS. User can have a rule like this to avoid docker discovery: `- STATIC_RULES=*,/api/email/(.*),http://email-sender:8080/$$1`. This rule expects `email-sender` container defined inside the same compose. Please note: users can achieve the same result by using the docker network even if the destination service was defined in a different compose file. This way reproxy configuration can stay separate from the actual services.
-
-There is nothing except reproxy binary inside the reproxy container, as it builds on top of an empty (scratch) image.
-
-### Running with a non-root user
-
-A user with UID `1001` (belonging to groups `1001` and `999`) is pre-created within the container and can be used for running reproxy as a non-root user:
-
-```yaml
-services:
-  reproxy:
-    user: 1001
-    image: umputun/reproxy:latest
-# <...>
-# see examples/ssl/docker-compose.yml for the full file example
-```
-
-If you want to use the Docker provider, you will need to ensure this user has permission to access the Docker socket on the host system. How you set up these permissions depends on your host system configuration. For more information on configuring Docker socket permissions, see the [Docker documentation on securing the Docker daemon socket](https://docs.docker.com/engine/security/protect-access/).
-
-## Options
-
-Each option can be provided in two forms: command line or environment key:value pair. Some command line options have a short form, like `-l localhost:8080` and all of them have the long form, i.e `--listen=localhost:8080`. The environment key (name) [listed](#all-application-options) for each option as a suffix, i.e. `[$LISTEN]`.
-
-All size options support unit suffixes, i.e. 10K (or 10k) for kilobytes, 16M (or 16m) for megabytes, 10G (or 10g) for gigabytes. Lack of any suffix (i.e. 1024) means bytes.
-
-Some options are repeatable, in this case user may pass it multiple times with the command line, or comma-separated in env. For example `--ssl.fqdn` is such an option and can be passed as `--ssl.fqdn=a1.example.com --ssl.fqdn=a2.example.com` or as env `SSL_ACME_FQDN=a1.example.com,a2.example.com`
-
-This is the list of all options supporting multiple elements: 
-
-- `ssl.fqdn` (`SSL_ACME_FQDN`)
-- `assets.cache` (`ASSETS_CACHE`)
-- `docker.exclude` (`DOCKER_EXCLUDE`)
-- `static.rule` (`$STATIC_RULES`)
-- `header` (`$HEADER`)
-- `drop-header` (`$DROP_HEADERS`)
-
-## All Application Options
-
-```
-  -l, --listen=                     listen on host:port (default: 0.0.0.0:8080/8443 under docker, 127.0.0.1:80/443 without) [$LISTEN]
-  -m, --max=                        max request size (default: 64K) [$MAX_SIZE]
-  -g, --gzip                        enable gz compression [$GZIP]
-  -x, --header=                     outgoing proxy headers to add [$HEADER]
-      --drop-header=                incoming headers to drop [$DROP_HEADERS]
-      --basic-htpasswd=             htpasswd file for basic auth [$BASIC_HTPASSWD]      
-      --lb-type=[random|failover|roundrobin]   load balancer type (default: random) [$LB_TYPE]
-      --signature                   enable reproxy signature headers [$SIGNATURE]
-      --remote-lookup-headers       enable remote lookup headers, trust only behind a trusted proxy [$REMOTE_LOOKUP_HEADERS]
-      --keep-host                   keep original Host header as default when proxying [$KEEP_HOST]
-      --insecure                    skip SSL verification on destination host [$INSECURE]
-      --dbg                         debug mode [$DEBUG]
-
-ssl:
-      --ssl.type=[none|static|auto] ssl (auto) support (default: none) [$SSL_TYPE]
-      --ssl.cert=                   path to cert.pem file [$SSL_CERT]
-      --ssl.key=                    path to key.pem file [$SSL_KEY]
-      --ssl.acme-location=          dir where certificates will be stored by autocert manager (default: ./var/acme) [$SSL_ACME_LOCATION]
-      --ssl.acme-email=             admin email for certificate notifications [$SSL_ACME_EMAIL]
-      --ssl.http-port=              http port for redirect to https and acme challenge test (default: 8080 under docker, 80 without) [$SSL_HTTP_PORT]
-      --ssl.fqdn=                   FQDN(s) for ACME certificates [$SSL_ACME_FQDN]
-
-assets:
-  -a, --assets.location=            assets location [$ASSETS_LOCATION]
-      --assets.root=                assets web root (default: /) [$ASSETS_ROOT]
-      --assets.spa                  spa treatment for assets [$ASSETS_SPA]
-      --assets.cache=               cache duration for assets [$ASSETS_CACHE]
-      --assets.not-found=           path to file to serve on 404, relative to location [$ASSETS_NOT_FOUND]
-
-logger:
-      --logger.stdout               enable stdout logging [$LOGGER_STDOUT]
-      --logger.enabled              enable access and error rotated logs [$LOGGER_ENABLED]
-      --logger.file=                location of access log (default: access.log) [$LOGGER_FILE]
-      --logger.max-size=            maximum size before it gets rotated (default: 100M) [$LOGGER_MAX_SIZE]
-      --logger.max-backups=         maximum number of old log files to retain (default: 10) [$LOGGER_MAX_BACKUPS]
-
-docker:
-      --docker.enabled              enable docker provider [$DOCKER_ENABLED]
-      --docker.host=                docker host (default: unix:///var/run/docker.sock) [$DOCKER_HOST]
-      --docker.network=             docker network [$DOCKER_NETWORK]
-      --docker.exclude=             excluded containers [$DOCKER_EXCLUDE]
-      --docker.auto                 enable automatic routing (without labels) [$DOCKER_AUTO]
-      --docker.prefix=              prefix for docker source routes [$DOCKER_PREFIX]
-      --docker.api-version=         docker API version (default: 1.24) [$DOCKER_API_VERSION]
-
-consul-catalog:
-      --consul-catalog.enabled      enable consul catalog provider [$CONSUL_CATALOG_ENABLED]
-      --consul-catalog.address=     consul address (default: http://127.0.0.1:8500) [$CONSUL_CATALOG_ADDRESS]
-      --consul-catalog.interval=    consul catalog check interval (default: 1s) [$CONSUL_CATALOG_INTERVAL]
-
-file:
-      --file.enabled                enable file provider [$FILE_ENABLED]
-      --file.name=                  file name (default: reproxy.yml) [$FILE_NAME]
-      --file.interval=              file check interval (default: 3s) [$FILE_INTERVAL]
-      --file.delay=                 reload only after the file has been unchanged for this long (default: 500ms) [$FILE_DELAY]
-
-static:
-      --static.enabled              enable static provider [$STATIC_ENABLED]
-      --static.rule=                routing rules [$STATIC_RULES]
-
-timeout:
-      --timeout.read-header=        read header server timeout (default: 5s) [$TIMEOUT_READ_HEADER]
-      --timeout.write=              write server timeout (default: 30s) [$TIMEOUT_WRITE]
-      --timeout.idle=               idle server timeout (default: 30s) [$TIMEOUT_IDLE]
-      --timeout.dial=               dial transport timeout (default: 30s) [$TIMEOUT_DIAL]
-      --timeout.keep-alive=         keep-alive transport timeout (default: 30s) [$TIMEOUT_KEEP_ALIVE]
-      --timeout.resp-header=        response header transport timeout (default: 5s) [$TIMEOUT_RESP_HEADER]
-      --timeout.idle-conn=          idle connection transport timeout (default: 90s) [$TIMEOUT_IDLE_CONN]
-      --timeout.tls=                TLS hanshake transport timeout (default: 10s) [$TIMEOUT_TLS]
-      --timeout.continue=           expect continue transport timeout (default: 1s) [$TIMEOUT_CONTINUE]
-
-mgmt:
-      --mgmt.enabled                enable management API [$MGMT_ENABLED]
-      --mgmt.listen=                listen on host:port (default: 0.0.0.0:8081) [$MGMT_LISTEN]
-      --mgmt.low-cardinality        use route patterns instead of raw paths for metrics labels [$MGMT_LOW_CARDINALITY]
-
-error:
-      --error.enabled               enable html errors reporting [$ERROR_ENABLED]
-      --error.template=             error message template file [$ERROR_TEMPLATE]
-
-health-check:
-      --health-check.enabled        enable automatic health-check [$HEALTH_CHECK_ENABLED]
-      --health-check.interval=      automatic health-check interval (default: 300s) [$HEALTH_CHECK_INTERVAL]
-
-throttle:
-      --throttle.system=            throttle overall activity' (default: 0) [$THROTTLE_SYSTEM]
-      --throttle.user=              limit req/sec per user and per proxy destination (default: 0) [$THROTTLE_USER]
-
-upstream:
-      --upstream.max-idle-conns=    max idle connections total (default: 100) [$UPSTREAM_MAX_IDLE_CONNS]
-      --upstream.max-conns=         max connections per upstream host (0=unlimited) (default: 0) [$UPSTREAM_MAX_CONNS]
-
-plugin:
-      --plugin.enabled              enable plugin support [$PLUGIN_ENABLED]
-      --plugin.listen=              registration listen on host:port (default: 127.0.0.1:8081) [$PLUGIN_LISTEN]
-
-Help Options:
-  -h, --help                        Show this help message
-
-```
-
-## Status
-
-The project is under active development and may have breaking changes till `v1` is released. However, we are trying our best not to break things unless there is a good reason. As of version 0.4.x, reproxy is considered good enough for real-life usage, and many setups are running it in production.
+2. Reproxy را به‌عنوان Data Plane انتخاب کردیم
+
+به‌جای اینکه Reverse Proxy را از صفر بنویسم، از Reproxy v1.7.1 استفاده کردم.
+
+وظیفه Reproxy:
+
+دریافت Request
+ارسال Request به Origin
+Health Check
+تشخیص وضعیت Backendها
+Failover بین Primary و Backup
+
+
+main job : 
+
+                 Normal Traffic
+User ───────→ ArvanCloud ───────→ Origin
+                    │
+                    │ Failure
+                    ▼
+              Backup Edge
+                    │
+                    ▼
+                  Origin
+
+                  failure : when cdn service is down we can use this backup edge to keep our services up 
+                  i use Reproxy instead of craete a new reverse proxy , its take a little time from devoloper 
+                  Facilities : 
+                  i created two nginx service for monitoring tarfic 
+
+
+                  Primary Origin
+localhost:3000
+       │
+       └── PRIMARY ORIGIN - company-edge
+
+
+Backup Origin
+localhost:3001
+       │
+       └── BACKUP ORIGIN - company-edge
+
+       2 : Health check is enabeld for checking situation of backend 
+
+
+       3 : i sat up failover system for time that  primary : 3000 isnt working . i tested this  and it works .
+
+
+        in normal situation : 
+        Client
+  ↓
+Reproxy
+  ↓
+Primary :3000
+  ↓
+PRIMARY ORIGIN 
+
+
+in failover time :
+Client
+  ↓
+Reproxy
+  ↓
+Backup :3001
+  ↓
+BACKUP ORIGIN
+
+3 : recovery 
+when primary origin is fixed the main origin back in sitation 
+
+              ┌──────────────┐
+              │ Primary UP   │
+              └──────┬───────┘
+                     ↓
+                  PRIMARY
+                     │
+                Primary DOWN
+                     ↓
+                  BACKUP
+                     │
+                Primary UP
+                     ↓
+                  PRIMARY
+
+                  sitation of project till now : 
+                                   HTTPS
+                   │
+                   ▼
+              ┌─────────┐
+              │ Reproxy │
+              └────┬────┘
+                   │
+          ┌────────┴────────┐
+          ↓                 ↓
+     Primary :3000     Backup :3001
+          │                 │
+          ↓                 ↓
+       Nginx             Nginx

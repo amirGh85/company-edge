@@ -1,12 +1,2 @@
-*.test
-*.out
-access.log
-var/
-dist/
-docker-compose-private.yml
-.vscode
-.idea
-*.gpg
-reproxy-private.yml
-.env
-coverage.html
+certs/
+*.pem

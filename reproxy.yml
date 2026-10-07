@@ -1,0 +1,8 @@
+default:
+  - route: "/"
+    dest: "http://host.docker.internal:3000"
+    ping: "http://host.docker.internal:3000"
+
+  - route: "/"
+    dest: "http://host.docker.internal:3001"
+    ping: "http://host.docker.internal:3001"

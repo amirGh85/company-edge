@@ -1,0 +1,19 @@
+services:
+  reproxy:
+    image: umputun/reproxy:v1.7.1
+    container_name: company-reproxy
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - ./reproxy.yml:/reproxy.yml:ro
+      - ./certs:/certs:ro
+    command:
+      - --file.enabled
+      - --file.name=/reproxy.yml
+      - --ssl.type=static
+      - --ssl.cert=/certs/test.company.local.pem
+      - --ssl.key=/certs/test.company.local-key.pem
+      - --health-check.enabled
+      - --health-check.interval=5s
+      - --lb-type=failover

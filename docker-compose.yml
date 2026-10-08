@@ -2,6 +2,8 @@ services:
   reproxy:
     image: umputun/reproxy:v1.7.1
     container_name: company-reproxy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8080:8080"
       - "8443:8443"

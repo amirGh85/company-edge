@@ -1,2 +1,11 @@
 certs/
 *.pem
+# Company Edge Control Panel secrets and runtime data
+control-panel/.env
+control-panel/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Local backup files
+*.bak

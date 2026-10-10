@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Company Edge | Control Panel</title>
+<style>
+:root{color-scheme:dark;--bg:#0a0e14;--panel:#111823;--panel2:#151f2c;--line:#263244;--text:#e7edf5;--muted:#8c9bb0;--cyan:#55d6e8;--green:#43d49a;--amber:#f2bd58;--red:#ff737d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}button{font:inherit;cursor:pointer}.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}.sidebar{border-right:1px solid var(--line);background:#0d131c;padding:24px 16px;display:flex;flex-direction:column;gap:28px}.brand{display:flex;align-items:center;gap:11px;padding:0 8px}.logo{width:36px;height:36px;border-radius:10px;background:#15313c;color:var(--cyan);display:grid;place-items:center;font-weight:800;font-size:17px;border:1px solid #24505b}.brand strong{display:block;letter-spacing:.4px}.brand small{color:var(--muted);font-size:11px}.section-label{font-size:10px;letter-spacing:1.5px;color:#65758a;padding:0 11px;margin-bottom:8px}.nav{display:grid;gap:5px}.nav button{border:1px solid transparent;background:transparent;color:#9eacbf;text-align:left;padding:11px;border-radius:8px;display:flex;gap:12px;align-items:center}.nav button .ico{width:18px;text-align:center;color:#7f92a9}.nav button.active,.nav button:hover{background:#172331;color:var(--text);border-color:#27394d}.nav button.active .ico{color:var(--cyan)}.side-bottom{margin-top:auto;border:1px solid var(--line);border-radius:10px;padding:13px;background:#111923}.side-bottom .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--amber);margin-right:7px}.side-bottom p{margin:7px 0 0;color:var(--muted);font-size:11px}.main{min-width:0}.topbar{height:72px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 32px;gap:16px}.crumb{color:var(--muted);font-size:12px}.crumb b{color:var(--text);font-weight:600}.top-actions{display:flex;align-items:center;gap:12px}.env{font-size:11px;color:var(--cyan);border:1px solid #28515e;background:#10232b;border-radius:6px;padding:5px 9px}.avatar{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;background:#25364a;color:#d7e7f6;font-size:12px}.content{max-width:1500px;margin:auto;padding:30px 32px 48px}.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:26px}.eyebrow{font-size:10px;letter-spacing:1.8px;color:var(--cyan);font-weight:700}.page-head h1{font-size:25px;letter-spacing:-.6px;margin:5px 0}.sub{color:var(--muted);margin:0;font-size:13px}.btn{border:1px solid #33465b;background:#182433;color:var(--text);border-radius:7px;padding:9px 13px;font-size:12px}.btn.primary{background:#16404a;border-color:#23616d;color:#baf6ff}.btn:hover{filter:brightness(1.15)}.notice{display:flex;align-items:flex-start;gap:12px;border:1px solid #54472b;background:#211d15;padding:13px 15px;border-radius:9px;color:#e7d4a6;margin-bottom:22px}.notice strong{display:block;font-size:12px;margin-bottom:2px}.notice p{font-size:12px;color:#bcae8e;margin:0}.notice .mark{color:var(--amber);font-size:17px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:17px;min-width:0}.stat-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px}.stat-icon{width:30px;height:30px;border:1px solid #293b4f;border-radius:8px;display:grid;place-items:center;color:var(--cyan)}.stat-value{font-size:28px;font-weight:650;letter-spacing:-.8px;margin:13px 0 3px}.stat-foot{font-size:11px;color:var(--muted)}.pill{display:inline-flex;align-items:center;gap:6px;font-size:10px;border-radius:20px;padding:4px 8px;border:1px solid #285342;color:var(--green);background:#12251f}.pill.warn{border-color:#57472a;color:var(--amber);background:#282115}.pill.neutral{border-color:#35465b;color:#a9bdd3;background:#182331}.pill .dot{width:5px;height:5px;border-radius:50%;background:currentColor}.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:18px;margin-bottom:18px}.card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}.card-head h2{font-size:14px;margin:0;font-weight:650}.card-head p{font-size:11px;color:var(--muted);margin:3px 0 0}.text-btn{border:0;background:transparent;color:var(--cyan);font-size:11px;padding:4px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;white-space:nowrap}th{text-align:left;color:#75869c;font-size:10px;letter-spacing:.6px;font-weight:600;padding:11px 10px;border-bottom:1px solid var(--line)}td{padding:14px 10px;border-bottom:1px solid #202b3a;font-size:12px}tbody tr:last-child td{border-bottom:0}.domain{font-weight:600}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#a9bad0}.muted{color:var(--muted)}.health-list{display:grid;gap:0}.health-row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:14px 0;border-bottom:1px solid #202b3a}.health-row:last-child{border:0}.health-name{font-weight:600;font-size:12px}.health-url{font-size:11px;color:var(--muted);margin-top:3px}.health-meta{text-align:right}.health-ms{font-family:ui-monospace,monospace;font-size:12px}.health-state{font-size:10px;color:var(--green);margin-top:4px}.health-state.warn{color:var(--amber)}.bar{height:4px;border-radius:5px;background:#263446;margin-top:9px;overflow:hidden}.bar span{display:block;height:100%;background:var(--cyan);border-radius:5px}.events{display:grid}.event{display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:start;gap:10px;padding:13px 0;border-bottom:1px solid #202b3a}.event:last-child{border:0}.event-icon{width:25px;height:25px;border-radius:7px;background:#172d2a;color:var(--green);display:grid;place-items:center;font-size:12px}.event-icon.amber{background:#2b2418;color:var(--amber)}.event-title{font-size:12px;font-weight:550}.event-desc{font-size:11px;color:var(--muted);margin-top:3px}.event-time{font-size:10px;color:#718199;white-space:nowrap}.placeholder{padding:36px 20px;text-align:center;color:var(--muted);font-size:12px}.footer{border-top:1px solid var(--line);padding-top:16px;display:flex;justify-content:space-between;gap:10px;color:#66778d;font-size:10px}.view{display:none}.view.active{display:block}.mobile-menu{display:none}
+@media(max-width:1050px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}.content{padding:24px 20px}.topbar{padding:0 20px}}
+@media(max-width:680px){.app{grid-template-columns:1fr}.sidebar{display:none}.topbar{height:60px;padding:0 16px}.content{padding:22px 14px}.page-head{flex-direction:column}.stats{gap:9px}.card{padding:13px}.stat-value{font-size:24px}.footer{flex-direction:column}.layout{gap:12px}.mobile-menu{display:inline-block}}
+</style>
+<style>
+/* DOMAIN FORM STYLES */
+#domain-form-card label{display:block;margin:14px 0 6px;color:var(--muted);font-size:13px}
+#domain-form-card input{display:block;width:100%;box-sizing:border-box;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:11px;margin-bottom:8px}
+#domain-form{max-width:720px}
+#domain-form-message{min-height:20px;color:var(--muted)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="logo">CE</div><div><strong>COMPANY EDGE</strong><small>CDN CONTROL PLANE</small></div></div>
+  <div><div class="section-label">PLATFORM</div><nav class="nav" id="nav">
+    <button class="active" data-view="overview"><span class="ico">▦</span>Overview</button>
+    <button data-view="domains"><span class="ico">◇</span>Domains & Origins</button>
+    <button data-view="health"><span class="ico">⌁</span>Health Monitoring</button>
+    <button data-view="failover"><span class="ico">⇄</span>Failover Control</button>
+  </nav></div>
+  <div><div class="section-label">ADMINISTRATION</div><nav class="nav" id="admin-nav">
+    <button data-view="users"><span class="ico">♙</span>Users & Roles</button>
+    <button data-view="audit"><span class="ico">≡</span>Audit Log</button>
+  </nav></div>
+  <div class="side-bottom"><span class="dot"></span><span style="font-size:11px" id="sidebar-status">Monitoring connected</span><p>Live health probes · admin actions read-only</p></div>
+</aside>
+<main class="main">
+  <header class="topbar"><div class="crumb">Company Edge <span style="padding:0 7px;color:#506178">/</span> <b id="crumb">Overview</b></div><div class="top-actions"><span class="env">INTERNAL NETWORK</span><span class="avatar">AD</span></div></header>
+  <div class="content">
+    <section class="page-head"><div><div class="eyebrow">EDGE OPERATIONS / CONTROL PLANE</div><h1 id="title">Overview</h1><p class="sub" id="subtitle">Infrastructure health and traffic routing at a glance.</p></div><button class="btn" id="refresh">↻ &nbsp; Refresh status</button></section>
+    <div class="notice" id="monitor-notice"><span class="mark" id="monitor-notice-mark">●</span><div><strong id="monitor-notice-title">Connecting to monitoring API…</strong><p id="monitor-notice-text">Fetching live health probes. Administrative changes remain disabled.</p></div></div>
+    <section class="view active" id="view-overview">
+      <div class="stats">
+        <div class="card"><div class="stat-top">Configured routes <span class="stat-icon">◇</span></div><div class="stat-value" id="configured-routes-count">—</div><div class="stat-foot">Live config</div></div>
+        <div class="card"><div class="stat-top">Healthy origins <span class="stat-icon">⌁</span></div><div class="stat-value" id="healthy-origins-value">— <span style="font-size:13px;color:var(--muted);font-weight:400">/ 02</span></div><div class="stat-foot"><span class="pill neutral" id="healthy-origins-status">Waiting for probes</span></div></div>
+        <div class="card"><div class="stat-top">Failover events <span class="stat-icon">⇄</span></div><div class="stat-value">00</div><div class="stat-foot">No live event feed</div></div>
+        <div class="card"><div class="stat-top">Control API <span class="stat-icon">⌘</span></div><div class="stat-value" id="monitor-api-status" style="font-size:19px;margin:18px 0 13px">Connecting…</div><div class="stat-foot" id="monitor-last-updated">Waiting for first probe</div></div>
+      </div>
+      <div class="layout">
+        <div class="card"><div class="card-head"><div><h2>Configured routes</h2><p>Live routes and upstream destinations from Reproxy config</p></div><button class="text-btn" data-go="domains">View all →</button></div>
+          <div class="table-wrap"><table><thead><tr><th>GROUP</th><th>ROUTE</th><th>DESTINATION</th><th>STATUS</th></tr></thead><tbody id="route-summary-body"><tr><td colspan="4" class="muted">Loading live routes…</td></tr></tbody></table></div>
+        </div>
+        <div class="card"><div class="card-head"><div><h2>Service health</h2><p>Live service reachability and latency</p></div><button class="text-btn" data-go="health">Details →</button></div>
+          <div class="health-list">
+            <div class="health-row"><div><div class="health-name">Reproxy edge</div><div class="health-url">company-reproxy:8080</div><div class="bar"><span id="reproxy-bar" style="width:0%"></span></div></div><div class="health-meta"><div class="health-ms" id="reproxy-ms">— ms</div><div class="health-state warn" id="reproxy-state">Waiting</div></div></div>
+            <div class="health-row"><div><div class="health-name">Primary origin</div><div class="health-url">host.docker.internal:3000</div><div class="bar"><span id="primary-bar" style="width:0%"></span></div></div><div class="health-meta"><div class="health-ms" id="primary-ms">— ms</div><div class="health-state warn" id="primary-state">Waiting</div></div></div>
+            <div class="health-row"><div><div class="health-name">Backup origin</div><div class="health-url">host.docker.internal:3001</div><div class="bar"><span id="backup-bar" style="width:0%"></span></div></div><div class="health-meta"><div class="health-ms" id="backup-ms">— ms</div><div class="health-state warn" id="backup-state">Waiting</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card"><div class="card-head"><div><h2>Recent activity</h2><p>Audit trail will appear here after backend integration</p></div><button class="text-btn" data-go="audit">Audit log →</button></div><div class="placeholder">No live events available in preview mode.</div></div>
+    </section>
+    <section class="view" id="view-domains"><div class="card"><div class="card-head"><div><h2>Routes & Origins</h2><p>Routes parsed from the active Reproxy configuration</p></div><button class="btn" id="add-domain-toggle" type="button">＋ Add domain</button></div><div class="table-wrap"><table><thead><tr><th>GROUP</th><th>ROUTE</th><th>DESTINATION</th><th>HEALTH CHECK</th></tr></thead><tbody id="route-details-body"><tr><td colspan="4" class="muted">Loading live routes…</td></tr></tbody></table></div></div>
+    <div id="domain-drafts-section" aria-label="Domain drafts">
+      <div class="card" id="domain-form-card" hidden>
+        <div class="card-head"><div><h2>Add public domain</h2><p>Save a draft only; this does not change active Reproxy routing</p></div><button class="btn" id="cancel-domain-form" type="button">Cancel</button></div>
+        <form id="domain-form">
+          <label for="domain-input">Public internet domain</label><input id="domain-input" name="domain" placeholder="cdn.example.com" autocomplete="off" required maxlength="253">
+          <label for="primary-origin-input">Primary origin URL</label><input id="primary-origin-input" name="primary_origin" placeholder="http://10.20.45.252:3000" required>
+          <label for="backup-origin-input">Backup origin URL</label><input id="backup-origin-input" name="backup_origin" placeholder="https://origin-backup.example.net" required>
+          <label for="primary-health-input">Primary health-check URL (optional)</label><input id="primary-health-input" name="primary_health" placeholder="http://10.20.45.252:3000/health">
+          <label for="backup-health-input">Backup health-check URL (optional)</label><input id="backup-health-input" name="backup_health" placeholder="https://origin-backup.example.net/health">
+          <p class="muted">Origins accept HTTP or HTTPS URLs. Health-check URLs currently must use the origin root path.</p>
+          <button class="btn" id="save-domain-button" type="submit">Save draft</button>
+          <p id="domain-form-message" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h2>Saved domain drafts</h2><p>Drafts are stored separately and are not active in Reproxy</p></div><button class="btn" id="refresh-domain-drafts" type="button">Refresh</button></div>
+        <div class="table-wrap"><table><thead><tr><th>DOMAIN</th><th>PRIMARY ORIGIN</th><th>BACKUP ORIGIN</th><th>STATUS</th><th>CREATED BY</th></tr></thead><tbody id="domain-drafts-body"><tr><td colspan="5" class="muted">Loading drafts…</td></tr></tbody></table></div>
+      </div>
+    </div>
+
+    </section>
+    <section class="view" id="view-health"><div class="card"><div class="card-head"><div><h2>Health Monitoring</h2><p>Live HTTP probes from the control panel</p></div><span class="pill neutral" id="health-refresh-state">Connecting…</span></div><div id="monitor-services" class="health-list"><div class="placeholder">Loading live probe data…</div></div><p class="stat-foot" style="margin-top:12px">Probes refresh automatically every 15 seconds. Reproxy HTTP redirects (such as 307) count as reachable.</p></div></section>
+    <section class="view" id="view-failover"><div class="card"><div class="card-head"><div><h2>Failover Control</h2><p>Production actions remain disabled until safe control integration is implemented</p></div><span class="pill warn">Read-only</span></div><div class="notice"><span class="mark">!</span><div><strong>Manual switching is not available yet</strong><p>Failover actions will require authentication, role checks, confirmation, and an audit record before any production change.</p></div></div><button class="btn" disabled>Switch to backup</button></div></section>
+    <section class="view" id="view-users"><div class="card"><div class="card-head"><div><h2>Users & Roles</h2><p>Access control for internal operators</p></div><button class="btn" disabled>＋ Add user</button></div><div class="placeholder">User management will be enabled with the authenticated backend.</div></div></section>
+    <section class="view" id="view-audit"><div class="card"><div class="card-head"><div><h2>Audit Log</h2><p>Traceable record of administrative actions</p></div><button class="btn" disabled>Export</button></div><div class="table-wrap"><table><thead><tr><th>TIME (UTC)</th><th>ACTOR</th><th>ACTION</th><th>DOMAIN</th><th>RESULT</th></tr></thead><tbody id="audit-events-body"><tr><td colspan="5" class="muted">Loading audit events…</td></tr></tbody></table></div></div></section>
+    <footer class="footer"><span>COMPANY EDGE · CONTROL PLANE</span><span>Internal administration · Monitoring connected</span></footer>
+  </div>
+</main>
+</div>
+<script>
+const labels={overview:["Overview","Infrastructure health and traffic routing at a glance."],domains:["Domains & Origins","Inspect configured routes and upstream destinations."],health:["Health Monitoring","Inspect origin availability and probe status."],failover:["Failover Control","Review and control primary/backup routing."],users:["Users & Roles","Manage operator access and permissions."],audit:["Audit Log","Review administrative activity and change history."]};
+function showView(name){if(!labels[name])return;document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+name));document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===name));document.getElementById("title").textContent=labels[name][0];document.getElementById("crumb").textContent=labels[name][0];document.getElementById("subtitle").textContent=labels[name][1];if(name==="audit"&&typeof refreshAudit==="function")refreshAudit();}
+document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
+document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.go)));
+const refreshButton=document.getElementById("refresh");
+function setText(id,value){const el=document.getElementById(id);if(el)el.textContent=value}
+function setProbeState(id,service){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.textContent=service.status.toUpperCase()+(service.http_status?" · HTTP "+service.http_status:"");
+  el.className="health-state"+(service.status==="up"?"":" warn");
+  if(service.status!=="up")el.style.color="var(--red)";
+  else el.style.color="";
+}
+function renderServices(services){
+  const list=document.getElementById("monitor-services");
+  list.replaceChildren();
+  services.forEach(service=>{
+    const row=document.createElement("div");row.className="health-row";
+    const info=document.createElement("div");
+    const name=document.createElement("div");name.className="health-name";name.textContent=service.name;
+    const url=document.createElement("div");url.className="health-url";url.textContent=service.url;
+    const bar=document.createElement("div");bar.className="bar";
+    const fill=document.createElement("span");fill.style.width=service.status==="up"?"100%":"0%";fill.style.background=service.status==="up"?"var(--green)":"var(--red)";bar.append(fill);
+    info.append(name,url,bar);
+    const meta=document.createElement("div");meta.className="health-meta";
+    const ms=document.createElement("div");ms.className="health-ms";ms.textContent=Number(service.latency_ms).toFixed(1)+" ms";
+    const state=document.createElement("div");state.className="health-state"+(service.status==="up"?"":" warn");
+    state.textContent=service.status.toUpperCase()+(service.http_status?" · HTTP "+service.http_status:"");
+    if(service.status!=="up")state.style.color="var(--red)";
+    meta.append(ms,state);row.append(info,meta);list.append(row);
+  });
+}
+async function refreshConfig(){
+  const body=document.getElementById("route-summary-body");
+  const detailsBody=document.getElementById("route-details-body");
+  try{
+    const response=await fetch("/api/config",{cache:"no-store",credentials:"same-origin"});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    const data=await response.json();
+    const routes=data.routes||[];
+    const routeCount=document.getElementById("configured-routes-count");
+    if(routeCount)routeCount.textContent=String(routes.length).padStart(2,"0");
+    body.replaceChildren();
+    detailsBody.replaceChildren();
+    if(!routes.length){
+      body.innerHTML=`<tr><td colspan="4" class="muted">No routes configured</td></tr>`;
+      detailsBody.innerHTML=body.innerHTML;
+      return;
+    }
+    routes.forEach(route=>{
+      const tr=document.createElement("tr");
+      [route.group,route.route,route.dest,"Configured"].forEach(value=>{
+        const td=document.createElement("td");
+        td.textContent=value||"—";
+        td.className="mono";
+        tr.append(td);
+      });
+      body.append(tr);
+      const detailRow=document.createElement("tr");
+      [route.group,route.route,route.dest,route.ping||"Not specified"].forEach(value=>{
+        const td=document.createElement("td");
+        td.textContent=value||"—";
+        td.className="mono";
+        detailRow.append(td);
+      });
+      detailsBody.append(detailRow);
+    });
+  }catch(error){
+    body.replaceChildren();
+    detailsBody.replaceChildren();
+    const tr=document.createElement("tr");
+    const td=document.createElement("td");
+    td.colSpan=4;
+    td.className="muted";
+    td.textContent="Unable to load routes";
+    tr.append(td);
+    body.append(tr);
+    const detailError=tr.cloneNode(true);
+    detailsBody.append(detailError);
+  }
+}
+async function refreshMonitor(){
+  refreshButton.disabled=true;refreshButton.textContent="↻  Checking…";
+  try{
+    const response=await fetch("/api/monitor",{cache:"no-store",credentials:"same-origin"});
+    if(!response.ok)throw new Error("Monitoring API returned HTTP "+response.status);
+    const data=await response.json();
+    const services=data.services||[];
+    const primary=services.find(x=>x.name==="Origin-primary");
+    const backup=services.find(x=>x.name==="Origin-backup");
+    const reproxy=services.find(x=>x.name==="Reproxy");
+    const healthy=[primary,backup].filter(x=>x&&x.status==="up").length;
+    const count=document.getElementById("healthy-origins-value");
+    count.replaceChildren(document.createTextNode(String(healthy).padStart(2,"0")+" "));
+    const total=document.createElement("span");total.style.cssText="font-size:13px;color:var(--muted);font-weight:400";total.textContent="/ 02";count.append(total);
+    const healthyStatus=document.getElementById("healthy-origins-status");
+    healthyStatus.className="pill"+(healthy===2?"":" warn");
+    healthyStatus.textContent=healthy===2?"All origins reachable":healthy+" of 2 origins reachable";
+    setText("monitor-api-status","Connected");
+    const updated=new Date(data.timestamp||Date.now());
+    setText("monitor-last-updated","Updated "+updated.toLocaleTimeString());
+    setText("monitor-notice-title","Live monitoring connected");
+    setText("monitor-notice-text","Service probes and configured routes are live. Administrative actions remain read-only.");
+    document.getElementById("monitor-notice").style.borderColor="#285342";
+    document.getElementById("monitor-notice").style.background="#12251f";
+    document.getElementById("monitor-notice-mark").style.color="var(--green)";
+    if(primary){
+      setText("primary-ms",Number(primary.latency_ms).toFixed(1)+" ms");
+      setProbeState("primary-state",primary);
+      document.getElementById("primary-bar").style.width=primary.status==="up"?"100%":"0%";
+    }
+    if(backup){
+      setText("backup-ms",Number(backup.latency_ms).toFixed(1)+" ms");
+      setProbeState("backup-state",backup);
+      document.getElementById("backup-bar").style.width=backup.status==="up"?"100%":"0%";
+    }
+    if(reproxy){
+      setText("reproxy-ms",Number(reproxy.latency_ms).toFixed(1)+" ms");
+      setProbeState("reproxy-state",reproxy);
+      document.getElementById("reproxy-bar").style.width=reproxy.status==="up"?"100%":"0%";
+    }
+    renderServices(services);
+    setText("health-refresh-state","Live · "+services.length+" probes");
+  }catch(error){
+    setText("monitor-api-status","Unavailable");
+    setText("monitor-notice-title","Monitoring API unavailable");
+    setText("monitor-notice-text","Could not retrieve live probes. Check your login session and panel logs.");
+    setText("health-refresh-state","Probe failed");
+    document.getElementById("monitor-notice").style.borderColor="#57472a";
+    document.getElementById("monitor-notice").style.background="#282115";
+    setText("healthy-origins-status","Probe unavailable");
+  }finally{
+    refreshButton.disabled=false;refreshButton.textContent="↻  Refresh status";
+  }
+}
+const domainFormCard=document.getElementById("domain-form-card");
+const domainForm=document.getElementById("domain-form");
+const domainFormMessage=document.getElementById("domain-form-message");
+document.getElementById("add-domain-toggle").addEventListener("click",()=>{
+  domainFormCard.hidden=false;
+  document.getElementById("domain-input").focus();
+});
+document.getElementById("cancel-domain-form").addEventListener("click",()=>{
+  domainFormCard.hidden=true;
+  domainFormMessage.textContent="";
+});
+document.getElementById("refresh-domain-drafts").addEventListener("click",refreshDomainDrafts);
+
+async function refreshDomainDrafts(){
+  const body=document.getElementById("domain-drafts-body");
+  try{
+    const response=await fetch("/api/domains",{cache:"no-store",credentials:"same-origin"});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    const data=await response.json();
+    body.replaceChildren();
+    const domains=data.domains||[];
+    if(!domains.length){
+      const tr=document.createElement("tr"),td=document.createElement("td");
+      td.colSpan=5;td.className="muted";td.textContent="No saved domain drafts";
+      tr.append(td);body.append(tr);return;
+    }
+    domains.forEach(domain=>{
+      const tr=document.createElement("tr");
+      [domain.domain,domain.primary_origin,domain.backup_origin,domain.status,domain.created_by].forEach(value=>{
+        const td=document.createElement("td");td.textContent=value||"—";td.className="mono";tr.append(td);
+      });
+      body.append(tr);
+    });
+  }catch(error){
+    body.replaceChildren();
+    const tr=document.createElement("tr"),td=document.createElement("td");
+    td.colSpan=5;td.className="muted";td.textContent="Unable to load saved drafts";
+    tr.append(td);body.append(tr);
+  }
+}
+
+domainForm.addEventListener("submit",async event=>{
+  event.preventDefault();
+  const button=document.getElementById("save-domain-button");
+  button.disabled=true;domainFormMessage.textContent="Saving draft…";
+  const formData=new FormData(domainForm);
+  const payload=Object.fromEntries(formData.entries());
+  try{
+    const response=await fetch("/api/domains",{
+      method:"POST",credentials:"same-origin",cache:"no-store",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)
+    });
+    if(!response.ok){
+      const message=await response.text();
+      throw new Error(message.trim()||("HTTP "+response.status));
+    }
+    domainForm.reset();
+    domainFormMessage.textContent="Draft saved. Active Reproxy configuration was not changed.";
+    await refreshDomainDrafts();
+  }catch(error){
+    domainFormMessage.textContent="Could not save draft: "+error.message;
+  }finally{
+    button.disabled=false;
+  }
+});
+
+async function refreshAudit(){
+  const body=document.getElementById("audit-events-body");
+  if(!body)return;
+  try{
+    const response=await fetch("/api/audit",{cache:"no-store",credentials:"same-origin"});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    const data=await response.json();
+    body.replaceChildren();
+    const events=data.events||[];
+    if(!events.length){
+      const tr=document.createElement("tr"),td=document.createElement("td");
+      td.colSpan=5;td.className="muted";td.textContent="No audit events recorded";
+      tr.append(td);body.append(tr);return;
+    }
+    events.slice().reverse().forEach(event=>{
+      const tr=document.createElement("tr");
+      [event.time,event.actor,event.action,event.domain,event.result].forEach(value=>{
+        const td=document.createElement("td");td.textContent=value||"—";td.className="mono";tr.append(td);
+      });
+      body.append(tr);
+    });
+  }catch(error){
+    body.replaceChildren();
+    const tr=document.createElement("tr"),td=document.createElement("td");
+    td.colSpan=5;td.className="muted";td.textContent="Unable to load audit events";
+    tr.append(td);body.append(tr);
+  }
+}
+refreshButton.addEventListener("click",refreshMonitor);
+refreshMonitor();
+refreshConfig();
+refreshDomainDrafts();
+refreshAudit();
+setInterval(refreshMonitor,15000);
+setInterval(refreshConfig,15000);
+</script>
+</body>
+</html>
